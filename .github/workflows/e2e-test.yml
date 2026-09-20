@@ -4,31 +4,37 @@ on: [push, pull_request]
 jobs:
   e2e-test:
     name: Node.js
-    runs-on: ubuntu-latest
+    # Cypress 3.x needs libgconf-2-4, which was removed in Ubuntu 24.04 (ubuntu-latest)
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
       matrix:
-        node-version: ["10.x", "12.x", "14.x"]
+        node-version: ["16.x", "18.x"]
 
     steps:
       - name: Checkout https://github.com/${{ github.repository }}@${{ github.ref }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
       - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Use cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.npm
             ~/.cache
           key: ${{ runner.os }}-node${{ matrix.node-version }}-E2E-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Cypress system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk2.0-0 libgtk-3-0 libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb
 
       - name: Install dependencies
         run: |
@@ -55,7 +61,7 @@ jobs:
 
       - name: Upload cypress artifacts
         if: failure() && (steps.test-suite.outcome == 'failure')
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-artifacts-node${{ matrix.node-version }}
           path: test/e2e/screenshots
